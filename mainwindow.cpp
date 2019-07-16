@@ -196,7 +196,9 @@ void MainWindow::refresh_table(){
                     ether->ether_source_addr[4],ether->ether_source_addr[5]);
             ui->tableWidget->setItem(table_size,2,new QTableWidgetItem(source));
             ui->tableWidget->setItem(table_size,3,new QTableWidgetItem(dest));
-            ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("Ether"));
+            if(ether_type==0x86dd)
+                ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("IPv6"));
+            else ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("Ether"));
             ui->tableWidget->setItem(table_size,6,new QTableWidgetItem("unknown"));
         }
 
