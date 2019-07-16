@@ -62,21 +62,19 @@ void Device::item_doubleclicked(QListWidgetItem* item){
         QMessageBox::critical(this,"Error","invalued item!");
         return;
     }
-    pcap_t* old=pcap_handle;
-    if(pcap_handle)pcap_close(pcap_handle);
-    pcap_handle=nullptr;
     int timelimit=ui->lineEdit->text().toInt();
-    pcap_handle=pcap_open_live(item->text().toLatin1(),65535,ui->checkBox->isChecked(),timelimit,err_buf);
-    if(pcap_handle) {
-        nowdev=alldev;
-        while(nowdev!=nullptr){
-            if(QString(nowdev->name)==item->text())break;
-            nowdev=nowdev->next;
-        }
+    pcap_t* new_pcap=pcap_open_live(item->text().toLatin1(),65535,ui->checkBox->isChecked(),timelimit,err_buf);
+    nowdev=alldev;
+    while(nowdev!=nullptr){
+        if(QString(nowdev->name)==item->text())break;
+        nowdev=nowdev->next;
+    }
+    if(new_pcap){
+        if(pcap_handle)pcap_close(pcap_handle);
+        pcap_handle=new_pcap;
         accept();
     }
-    else {
-        pcap_handle=old;
+    else{
         QMessageBox::critical(this,"Error",QString("Error pcap_open_live() ")+err_buf);
         return;
     }

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1182</width>
-    <height>718</height>
+    <height>859</height>
    </rect>
   </property>
   <property name="font">
@@ -24,6 +24,13 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
+     <widget class="QLineEdit" name="lineEdit">
+      <property name="placeholderText">
+       <string>filter</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="5">
      <widget class="QSplitter" name="splitter">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
@@ -149,6 +156,33 @@ border-color: rgb(78, 154, 6);</string>
       </widget>
      </widget>
     </item>
+    <item row="0" column="1">
+     <widget class="QPushButton" name="pushButton_start">
+      <property name="text">
+       <string>start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="3">
+     <widget class="QLCDNumber" name="lcdNumber">
+      <property name="lineWidth">
+       <number>1</number>
+      </property>
+      <property name="digitCount">
+       <number>5</number>
+      </property>
+      <property name="intValue" stdset="0">
+       <number>0</number>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="2">
+     <widget class="QPushButton" name="pushButton_stop">
+      <property name="text">
+       <string>stop</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
@@ -170,6 +204,7 @@ border-color: rgb(78, 154, 6);</string>
      <string>file</string>
     </property>
     <addaction name="actionopen"/>
+    <addaction name="actionclose"/>
     <addaction name="actionsave"/>
     <addaction name="separator"/>
     <addaction name="actionquit"/>
@@ -181,30 +216,15 @@ border-color: rgb(78, 154, 6);</string>
     <addaction name="actionchange"/>
     <addaction name="actiondetail"/>
    </widget>
-   <widget class="QMenu" name="menufilter">
-    <property name="title">
-     <string>filter</string>
-    </property>
-    <addaction name="separator"/>
-    <addaction name="actionARP"/>
-    <addaction name="actionRARP"/>
-    <addaction name="separator"/>
-    <addaction name="actionIP"/>
-    <addaction name="separator"/>
-    <addaction name="actionTCP"/>
-    <addaction name="actionUDP"/>
-    <addaction name="separator"/>
-    <addaction name="actionICMP"/>
-   </widget>
    <widget class="QMenu" name="menupacket">
     <property name="title">
-     <string>packet</string>
+     <string>capture</string>
     </property>
     <addaction name="actionstart"/>
+    <addaction name="actionstop"/>
    </widget>
    <addaction name="menufile"/>
    <addaction name="menudevice"/>
-   <addaction name="menufilter"/>
    <addaction name="menupacket"/>
   </widget>
   <widget class="QStatusBar" name="statusBar">
@@ -221,118 +241,6 @@ border-color: rgb(193, 125, 17);</string>
     <bool>false</bool>
    </property>
   </widget>
-  <action name="actionethernet">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>ethernet</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionARP">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>ARP</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionRARP">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>RARP</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionIP">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>IP</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionTCP">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>TCP</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionUDP">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>UDP</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
-  <action name="actionICMP">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>ICMP</string>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>13</pointsize>
-    </font>
-   </property>
-  </action>
   <action name="actionopen">
    <property name="text">
     <string>open</string>
@@ -386,6 +294,26 @@ border-color: rgb(193, 125, 17);</string>
   <action name="actionstart">
    <property name="text">
     <string>start</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionstop">
+   <property name="text">
+    <string>stop</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionclose">
+   <property name="text">
+    <string>clear</string>
    </property>
    <property name="font">
     <font>

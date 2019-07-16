@@ -6,9 +6,12 @@
 #include <vector>
 #include "lbpcap.h"
 
+
 namespace Ui {
 class MainWindow;
 }
+
+class CaptureThread;
 
 class MainWindow : public QMainWindow
 {
@@ -19,10 +22,15 @@ public:
     ~MainWindow();
 
     QLabel *now_dev_status;
+    QLabel *now_capture_status;
 
     std::vector<pcap_pkthdr>pkthdr_list;
 
     std::vector<const u_char*>packet_list;
+
+    CaptureThread* mythread;
+
+    void refresh_table();
 
     void parsing_ether(const u_char*,int)const;
 
@@ -45,6 +53,15 @@ private slots:
     void on_actionstart_triggered();
 
     void show_detail_packet();
+
+    void on_actionstop_triggered();
+
+    void on_actionclose_triggered();
+
+    void on_actionopen_triggered();
+
+    void on_actionsave_triggered();
+
 private:
     Ui::MainWindow *ui;
 };

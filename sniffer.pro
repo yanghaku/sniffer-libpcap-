@@ -25,21 +25,20 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
-        capture.cpp \
+        capturethread.cpp \
         device.cpp \
         devicedetail.cpp \
         main.cpp \
         mainwindow.cpp
 
 HEADERS += \
-        capture.h \
+        capturethread.h \
         device.h \
         devicedetail.h \
         lbpcap.h \
         mainwindow.h
 
 FORMS += \
-        capture.ui \
         device.ui \
         devicedetail.ui \
         mainwindow.ui

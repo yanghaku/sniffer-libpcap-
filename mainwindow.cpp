@@ -3,16 +3,23 @@
 #include "lbpcap.h"
 #include "device.h"
 #include "devicedetail.h"
-#include "capture.h"
 #include <QDebug>
 #include <QLabel>
 #include <QMessageBox>
+#include <QStyleFactory>
+#include <QMovie>
+#include <QFileDialog>
+#include "capturethread.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->tableWidget->resizeColumnToContents(1);
+    ui->tableWidget->resizeColumnToContents(2);
+    ui->tableWidget->resizeColumnToContents(3);
+
     int datalink=pcap_datalink(pcap_handle);
     if(datalink!=-1){
         ui->statusBar->addPermanentWidget(new QLabel(QString("datalink: ")
@@ -21,11 +28,29 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->statusBar->addPermanentWidget(new QLabel(pcap_lib_version()));
     now_dev_status=new QLabel(QString("now device: ")+nowdev->name);
     ui->statusBar->addPermanentWidget(now_dev_status);
+
+    now_capture_status=new QLabel();
+    now_capture_status->setMovie(new QMovie(":/icon/wait.gif"));
+    now_capture_status->movie()->start();
+    now_capture_status->resize(20,20);
+    now_capture_status->movie()->setScaledSize(now_capture_status->size());
+
+    ui->treeWidget->setStyle(QStyleFactory::create("windows"));
     connect(ui->tableWidget,SIGNAL(itemSelectionChanged()),this,SLOT(show_detail_packet()));
+    connect(ui->pushButton_start,SIGNAL(clicked()),this,SLOT(on_actionstart_triggered()));
+    connect(ui->pushButton_stop,SIGNAL(clicked()),this,SLOT(on_actionstop_triggered()));
+    connect(ui->lineEdit,SIGNAL(returnPressed()),this,SLOT(on_actionstart_triggered()));
+    mythread=new CaptureThread;
+    mythread->mainwindow=this;
+    ui->pushButton_stop->setEnabled(false);
+    ui->actionstop->setEnabled(false);
 }
 
 MainWindow::~MainWindow()
 {
+    delete now_dev_status;
+    delete now_capture_status;
+    delete mythread;
     for(unsigned i=0;i<packet_list.size();++i){
         delete [] packet_list[i];
     }
@@ -48,35 +73,11 @@ void MainWindow::on_actiondetail_triggered()
 
 void MainWindow::on_actionstart_triggered()
 {
-    QString filter;
-    if(ui->actionIP->isChecked()){
-        if(!filter.isEmpty())filter=filter+" or ";
-        filter=filter+"ip ";
-    }
-    if(ui->actionARP->isChecked()){
-        if(!filter.isEmpty())filter=filter+" or ";
-        filter=filter+"arp ";
-    }
-    if(ui->actionRARP->isChecked()){
-        if(!filter.isEmpty())filter=filter+" or ";
-        filter=filter+"rarp ";
-    }
-    if(ui->actionICMP->isChecked()){
-        if(!filter.isEmpty())filter=filter+" or ";
-        filter=filter+"icmp ";
-    }
-    if(ui->actionTCP->isChecked()){
-        if(!filter.isEmpty())filter=filter+" or ";
-        filter=filter+"tcp ";
-    }
-    if(ui->actionUDP->isChecked()){
-        if(!filter.isEmpty())filter=filter+" or ";
-        filter=filter+"udp ";
-    }
-    if(filter.isEmpty()){
-        QMessageBox::critical(this,"Error","please select a protocol!");
+    if(!ui->pushButton_start->isEnabled()){
+        QMessageBox::critical(this,"Error","Capture is running!");
         return;
     }
+    QString filter=ui->lineEdit->text();
     bpf_program pro;
     if(pcap_compile(pcap_handle,&pro,filter.toLatin1(),0,0)==-1){
         QMessageBox::critical(this,"Error",QString("error: pcap_compile() ")+err_buf);
@@ -86,16 +87,119 @@ void MainWindow::on_actionstart_triggered()
         QMessageBox::critical(this,"Error",QString("error: pcap_setfilter() ")+err_buf);
         return;
     }
-    Capture dlg(this);
-    dlg.exec();
-    ui->tableWidget->setRowCount(int(pkthdr_list.size()));
+    ui->pushButton_start->setEnabled(false);
+    ui->pushButton_start->setText("starting");
+    ui->actionstart->setEnabled(false);
+    ui->statusBar->addWidget(now_capture_status);
+    now_capture_status->show();
+    ui->lineEdit->setEnabled(false);
+
+    mythread->is_run=1;
+    mythread->start();
+    ui->pushButton_stop->setEnabled(true);
+    ui->actionstop->setEnabled(true);
+}
+
+
+void MainWindow::on_actionstop_triggered()
+{
+    if(!ui->pushButton_stop->isEnabled()){
+        QMessageBox::critical(this,"Error","capture is already stop!");
+        return;
+    }
+    ui->pushButton_stop->setEnabled(false);
+    ui->actionstop->setEnabled(false);
+
+    mythread->is_run=0;
+    mythread->wait();
+    refresh_table();
+
+    ui->statusBar->removeWidget(now_capture_status);
+    ui->pushButton_start->setEnabled(true);
+    ui->pushButton_start->setText("start");
+    ui->actionstart->setEnabled(true);
+    ui->lineEdit->setEnabled(true);
+}
+
+void MainWindow::refresh_table(){
+    int size=packet_list.size();
+    ui->lcdNumber->display(size);
+    int table_size=ui->tableWidget->rowCount();
+    if(table_size==size)return;
+    ui->tableWidget->setRowCount(size);
     char buf[10];
-    for(unsigned i=0;i<this->pkthdr_list.size();++i){
-        ui->tableWidget->setItem(int(i),0,new QTableWidgetItem(QString::number(i)));
-        tm* tim=localtime(&pkthdr_list[i].ts.tv_sec);
+    for(;table_size<size;++table_size){
+        ui->tableWidget->setItem(table_size,0,new QTableWidgetItem(QString::number(table_size)));
+        tm* tim=localtime(&pkthdr_list[table_size].ts.tv_sec);
         sprintf(buf,"%02d:%02d:%02d:",tim->tm_hour,tim->tm_min,tim->tm_sec);
-        ui->tableWidget->setItem(int(i),1,new QTableWidgetItem(buf+QString::number(pkthdr_list[i].ts.tv_usec)));
-        ui->tableWidget->setItem(int(i),5,new QTableWidgetItem(QString::number(pkthdr_list[i].len)));
+        ui->tableWidget->setItem(table_size,1,new QTableWidgetItem(buf+QString::number(pkthdr_list[table_size].ts.tv_usec)));
+        ui->tableWidget->setItem(table_size,5,new QTableWidgetItem(QString::number(pkthdr_list[table_size].len)));
+
+        const u_int16_t ether_type=ntohs(*((const u_int16_t*)(packet_list[table_size]+12)));
+        if(ether_type==0x0800){//ip
+            const u_int8_t head_len=(*((const u_int8_t*)(packet_list[table_size]+14))&0xf)*4;
+            const u_int8_t protocol=*((const u_int8_t*)(packet_list[table_size]+14+9));
+            const in_addr* source=((const in_addr*)(packet_list[table_size]+14+12));
+            const in_addr* dest=((const in_addr*)(packet_list[table_size]+14+16));
+            ui->tableWidget->setItem(table_size,2,new QTableWidgetItem(inet_ntoa(*source)));
+            ui->tableWidget->setItem(table_size,3,new QTableWidgetItem(inet_ntoa(*dest)));
+            if(protocol==1){//icmp
+                ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("ICMP"));
+                ui->tableWidget->setItem(table_size,6,new QTableWidgetItem("NULL"));
+            }
+            else if(protocol==6){//tcp
+                ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("TCP"));
+                u_int16_t dst_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len)));
+                u_int16_t src_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len+2)));
+                QString str=QString("%1 -> %2  [ ").arg(src_port).arg(dst_port);
+                u_int8_t flag=*((const u_int8_t*)(packet_list[table_size]+14+head_len+13));
+                if((flag>>5)&1)str=str+"URG ";
+                if((flag>>4)&1)str=str+"ACK ";
+                if((flag>>3)&1)str=str+"PSH ";
+                if((flag>>2)&1)str=str+"RST ";
+                if((flag>>1)&1)str=str+"SYN ";
+                if(flag&1)str=str+"FIN ";
+                ui->tableWidget->setItem(table_size,6,new QTableWidgetItem(str+"]"));
+            }
+            else if(protocol==17){//udp
+                ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("UDP"));
+                u_int16_t src_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len)));
+                u_int16_t dst_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len+2)));
+                ui->tableWidget->setItem(table_size,6,new QTableWidgetItem(QString("%1 -> %2").arg(src_port).arg(dst_port)));
+            }
+            else{
+                ui->tableWidget->setItem(table_size,6,new QTableWidgetItem("unknown"));
+                if(protocol<ip_header_protocol_namelist_size)
+                    ui->tableWidget->setItem(table_size,4,new QTableWidgetItem(ip_header_protocol[protocol]));
+                else
+                    ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("unknown"));
+            }
+
+        }
+        else if(ether_type==0x0806){//arp
+            const u_int16_t oper=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+6)));
+            const in_addr* source=((const in_addr*)(packet_list[table_size]+14+14));
+            const in_addr* dest=((const in_addr*)(packet_list[table_size]+14+14+10));
+            ui->tableWidget->setItem(table_size,2,new QTableWidgetItem(inet_ntoa(*source)));
+            ui->tableWidget->setItem(table_size,3,new QTableWidgetItem(inet_ntoa(*dest)));
+            ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("ARP"));
+            ui->tableWidget->setItem(table_size,6,new QTableWidgetItem((oper==1?"(request)":"(reply)")));
+        }
+        else{
+            const ether_header* ether=((const ether_header*)packet_list[table_size]);
+            QString dest,source;
+            dest.sprintf("%02X:%02X:%02X:%02X:%02X:%02X",ether->ether_dest_addr[0],ether->ether_dest_addr[1],
+                    ether->ether_dest_addr[2],ether->ether_dest_addr[3],
+                    ether->ether_dest_addr[4],ether->ether_dest_addr[5]);
+            source.sprintf("%02X:%02X:%02X:%02X:%02X:%02X",ether->ether_source_addr[0],ether->ether_source_addr[1],
+                    ether->ether_source_addr[2],ether->ether_source_addr[3],
+                    ether->ether_source_addr[4],ether->ether_source_addr[5]);
+            ui->tableWidget->setItem(table_size,2,new QTableWidgetItem(source));
+            ui->tableWidget->setItem(table_size,3,new QTableWidgetItem(dest));
+            ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("Ether"));
+            ui->tableWidget->setItem(table_size,6,new QTableWidgetItem("unknown"));
+        }
+
     }
 }
 
@@ -185,7 +289,8 @@ void MainWindow::parsing_ether(const u_char *packet, int len) const{
         parsing_arp(packet+sizeof(ether_header));
         break;
     default:
-        qDebug()<<"I don\'t know"<<endl;
+        item=new QTreeWidgetItem(ui->treeWidget);
+        item->setText(0,QString("the upper protocol ")+ether_type_val_to_name(type)+QString("can not pasing"));
         break;
     }
 }
@@ -455,8 +560,56 @@ void MainWindow::parsing_icmp(const u_char *packet, int len) const{
 
 
 
+void MainWindow::on_actionclose_triggered(){
+    if(QMessageBox::question(this,"Waring","Don't save?")==QMessageBox::Yes){
+        for(unsigned i=0;i<packet_list.size();++i){
+            delete [] packet_list[i];
+        }
+        packet_list.clear();
+        pkthdr_list.clear();
+        ui->tableWidget->clearContents();
+        ui->tableWidget->setRowCount(0);
+        ui->treeWidget->clear();
+        ui->textEdit->clear();
+    }
+}
 
 
+void MainWindow::on_actionopen_triggered(){
+    QString filename=QFileDialog::getOpenFileName(this,"select file to open",".","pcap files(*.pcap)");
+    if(filename.isEmpty())return;
+
+    pcap_t* pcap_file_handle=pcap_open_offline(filename.toLatin1(),err_buf);
+    if(pcap_file_handle==nullptr){
+        QMessageBox::critical(this,"Error",QString("Error: pcap_open_office() ")+err_buf);
+        return;
+    }
+    const u_char* packet;
+    pcap_pkthdr* pkthdr;
+    while(pcap_next_ex(pcap_file_handle,&pkthdr,&packet)==1){
+        u_char* tmp=new u_char [pkthdr->len];
+        memcpy(tmp,packet,pkthdr->len);
+        packet_list.push_back(tmp);
+        pkthdr_list.push_back(*pkthdr);
+    }
+    refresh_table();
+}
+
+void MainWindow::on_actionsave_triggered(){
+    QString filename=QFileDialog::getSaveFileName(this,"select a fold to save",".","pcap files(*.pcap)");
+    if(filename.isNull()||filename.isEmpty())return;
+
+    pcap_dumper_t* dump=pcap_dump_open(pcap_handle,filename.toLatin1());
+    if(dump==nullptr){
+        QMessageBox::critical(this,"Error",QString("pcap_dump_open: ")+err_buf);
+        return;
+    }
+    for(unsigned i=0;i<packet_list.size();++i){
+        pcap_dump((u_char*)dump,&pkthdr_list[i],packet_list[i]);
+    }
+    pcap_dump_flush(dump);
+    pcap_dump_close(dump);
+}
 
 
 
@@ -637,3 +790,5 @@ const char* ip_header_protocol[ip_header_protocol_namelist_size]={
 /*131*/     "IP中的私有IP封装",
 /*132*/     "流控制传输协议"
 };
+
+
