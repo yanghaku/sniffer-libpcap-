@@ -10,6 +10,7 @@
 #include <QMovie>
 #include <QFileDialog>
 #include "capturethread.h"
+#include "statistics_ui.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -93,6 +94,10 @@ void MainWindow::on_actionstart_triggered()
     ui->statusBar->addWidget(now_capture_status);
     now_capture_status->show();
     ui->lineEdit->setEnabled(false);
+    ui->actionsave->setEnabled(false);
+    ui->actionclose->setEnabled(false);
+    ui->actionopen->setEnabled(false);
+    ui->tableWidget->setSortingEnabled(false);
 
     mythread->is_run=1;
     mythread->start();
@@ -110,6 +115,9 @@ void MainWindow::on_actionstop_triggered()
     ui->pushButton_stop->setEnabled(false);
     ui->actionstop->setEnabled(false);
 
+    if(err_buf[0]!='\0'){
+        QMessageBox::critical(this,"Error",err_buf);
+    }
     mythread->is_run=0;
     mythread->wait();
     refresh_table();
@@ -119,8 +127,13 @@ void MainWindow::on_actionstop_triggered()
     ui->pushButton_start->setText("start");
     ui->actionstart->setEnabled(true);
     ui->lineEdit->setEnabled(true);
+    ui->actionsave->setEnabled(true);
+    ui->actionclose->setEnabled(true);
+    ui->actionopen->setEnabled(true);
+    ui->tableWidget->setSortingEnabled(true);
 }
 
+//每次添加数据包，都会大体解析一下数据包，并且增加统计信息
 void MainWindow::refresh_table(){
     int size=packet_list.size();
     ui->lcdNumber->display(size);
@@ -135,19 +148,41 @@ void MainWindow::refresh_table(){
         ui->tableWidget->setItem(table_size,1,new QTableWidgetItem(buf+QString::number(pkthdr_list[table_size].ts.tv_usec)));
         ui->tableWidget->setItem(table_size,5,new QTableWidgetItem(QString::number(pkthdr_list[table_size].len)));
 
+        //先统计每个帧的信息
+        ++packet_statistics.mac_num;
+        packet_statistics.mac_set.emplace(((const ether_header*)packet_list[table_size])->ether_dest_addr);
+        packet_statistics.mac_set.emplace(((const ether_header*)packet_list[table_size])->ether_source_addr);
+        packet_statistics.mac_byte += pkthdr_list[table_size].len;
+        if(pkthdr_list[table_size].len>1518)++packet_statistics.mac_long;
+        if(pkthdr_list[table_size].len<64)++packet_statistics.mac_short;
+        if(  ((const MacAddr*)(((const ether_header*)packet_list[table_size])->ether_dest_addr))->is_broadcast() )
+            ++packet_statistics.mac_broadcast;
+
         const u_int16_t ether_type=ntohs(*((const u_int16_t*)(packet_list[table_size]+12)));
         if(ether_type==0x0800){//ip
+            //统计ip的信息
             const u_int8_t head_len=(*((const u_int8_t*)(packet_list[table_size]+14))&0xf)*4;
             const u_int8_t protocol=*((const u_int8_t*)(packet_list[table_size]+14+9));
             const in_addr* source=((const in_addr*)(packet_list[table_size]+14+12));
             const in_addr* dest=((const in_addr*)(packet_list[table_size]+14+16));
+
+            ++packet_statistics.ip_num;
+            const u_int64_t *p=(const u_int64_t*)dest;
+            if(!~*p && !~*(p+1))++packet_statistics.ip_broadcast;
+
             ui->tableWidget->setItem(table_size,2,new QTableWidgetItem(inet_ntoa(*source)));
             ui->tableWidget->setItem(table_size,3,new QTableWidgetItem(inet_ntoa(*dest)));
             if(protocol==1){//icmp
+                ++packet_statistics.icmp_num;
+                if(((const icmp_header*)packet_list[table_size])->icmp_type==3)
+                    ++packet_statistics.icmp_unreachable;
+                else if(((const icmp_header*)packet_list[table_size])->icmp_type==5)
+                    ++packet_statistics.icmp_redirect;
                 ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("ICMP"));
                 ui->tableWidget->setItem(table_size,6,new QTableWidgetItem("NULL"));
             }
             else if(protocol==6){//tcp
+                ++packet_statistics.tcp_num;
                 ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("TCP"));
                 u_int16_t dst_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len)));
                 u_int16_t src_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len+2)));
@@ -162,6 +197,7 @@ void MainWindow::refresh_table(){
                 ui->tableWidget->setItem(table_size,6,new QTableWidgetItem(str+"]"));
             }
             else if(protocol==17){//udp
+                ++packet_statistics.udp_num;
                 ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("UDP"));
                 u_int16_t src_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len)));
                 u_int16_t dst_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len+2)));
@@ -574,6 +610,7 @@ void MainWindow::on_actionclose_triggered(){
         ui->treeWidget->clear();
         ui->textEdit->clear();
     }
+    this->packet_statistics.clear();
 }
 
 
@@ -794,3 +831,15 @@ const char* ip_header_protocol[ip_header_protocol_namelist_size]={
 };
 
 
+
+void MainWindow::on_actiondisplay_statistics_triggered()
+{
+    Statistics_UI ui(&this->packet_statistics);
+    ui.exec();
+}
+
+void MainWindow::on_actionreset_triggered()
+{
+    if(QMessageBox::question(this,"Warning!","comfirm to reset the statistics information?")==QMessageBox::Yes)
+        this->packet_statistics.clear();
+}

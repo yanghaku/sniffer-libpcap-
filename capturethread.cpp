@@ -4,6 +4,7 @@
 void CaptureThread::run(){
     pcap_pkthdr* tmp_pkthdr;
     const u_char* tmp_packet;
+    err_buf[0]=0;
     while(is_run){
         if(mainwindow->packet_list.size()>9999)break;
         int res=pcap_next_ex(pcap_handle,&tmp_pkthdr,&tmp_packet);
@@ -13,12 +14,14 @@ void CaptureThread::run(){
             mainwindow->packet_list.push_back(res);
             mainwindow->pkthdr_list.push_back(*tmp_pkthdr);
         }
-        else if(res==0){
-            qDebug()<<"time out"<<endl;
+        else if(res==0){//time out
+            strcpy(err_buf,"time out!");
+            //mainwindow->on_actionstop_triggered();
             break;
         }
         else{
-            qDebug()<<"eror"<<endl;
+            strcpy(err_buf,"capture Error!");
+            //mainwindow->on_actionstop_triggered();
             break;
         }
         mainwindow->refresh_table();

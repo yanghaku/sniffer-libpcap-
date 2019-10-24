@@ -5,7 +5,7 @@
 #include <QLabel>
 #include <vector>
 #include "lbpcap.h"
-
+#include "statistics.h"
 
 namespace Ui {
 class MainWindow;
@@ -27,6 +27,8 @@ public:
     std::vector<pcap_pkthdr>pkthdr_list;
 
     std::vector<const u_char*>packet_list;
+
+    Statistics packet_statistics;
 
     CaptureThread* mythread;
 
@@ -62,8 +64,13 @@ private slots:
 
     void on_actionsave_triggered();
 
+    void on_actiondisplay_statistics_triggered();
+
+    void on_actionreset_triggered();
+
 private:
     Ui::MainWindow *ui;
+
 };
 
 #endif // MAINWINDOW_H

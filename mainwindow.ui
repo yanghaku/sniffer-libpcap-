@@ -58,6 +58,9 @@ border-color: rgb(252, 233, 79);</string>
        <property name="gridStyle">
         <enum>Qt::DotLine</enum>
        </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
        <attribute name="horizontalHeaderVisible">
         <bool>true</bool>
        </attribute>
@@ -223,9 +226,17 @@ border-color: rgb(78, 154, 6);</string>
     <addaction name="actionstart"/>
     <addaction name="actionstop"/>
    </widget>
+   <widget class="QMenu" name="menustatistics">
+    <property name="title">
+     <string>statistics</string>
+    </property>
+    <addaction name="actiondisplay_statistics"/>
+    <addaction name="actionreset"/>
+   </widget>
    <addaction name="menufile"/>
    <addaction name="menudevice"/>
    <addaction name="menupacket"/>
+   <addaction name="menustatistics"/>
   </widget>
   <widget class="QStatusBar" name="statusBar">
    <property name="font">
@@ -314,6 +325,26 @@ border-color: rgb(193, 125, 17);</string>
   <action name="actionclose">
    <property name="text">
     <string>clear</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actiondisplay_statistics">
+   <property name="text">
+    <string>display statistics</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionreset">
+   <property name="text">
+    <string>reset</string>
    </property>
    <property name="font">
     <font>

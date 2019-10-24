@@ -29,19 +29,24 @@ SOURCES += \
         device.cpp \
         devicedetail.cpp \
         main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+        statistics.cpp \
+        statistics_ui.cpp
 
 HEADERS += \
         capturethread.h \
         device.h \
         devicedetail.h \
         lbpcap.h \
-        mainwindow.h
+        mainwindow.h \
+        statistics.h \
+        statistics_ui.h
 
 FORMS += \
         device.ui \
         devicedetail.ui \
-        mainwindow.ui
+        mainwindow.ui \
+        statistics_ui.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
