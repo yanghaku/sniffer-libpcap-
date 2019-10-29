@@ -11,6 +11,7 @@
 #include <QFileDialog>
 #include "capturethread.h"
 #include "statistics_ui.h"
+#include "sendframe.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -842,4 +843,15 @@ void MainWindow::on_actionreset_triggered()
 {
     if(QMessageBox::question(this,"Warning!","comfirm to reset the statistics information?")==QMessageBox::Yes)
         this->packet_statistics.clear();
+}
+
+void MainWindow::on_actionCreate_triggered()
+{
+    SendFrame*send=new SendFrame(nowdev->name);
+    if(!send->ok){
+        QMessageBox::critical(this,"error","init error! ");
+        return;
+    }
+    send->setModal(false);
+    send->show();
 }

@@ -2,6 +2,7 @@
 #define STATISTICS_UI_H
 
 #include <QDialog>
+#include <QTimer>
 #include "statistics.h"
 
 namespace Ui {
@@ -21,6 +22,7 @@ private slots:
 
 private:
     const Statistics* data;
+    QTimer *timer;
     Ui::Statistics_UI *ui;
 };
 

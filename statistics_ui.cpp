@@ -11,10 +11,14 @@ Statistics_UI::Statistics_UI(const Statistics* d,QWidget *parent) :
     setFixedSize(this->width(),this->height());
     this->data=d;
     this->on_pushButton_refresh_clicked();
+    timer = new QTimer(this);
+    connect(timer,SIGNAL(timeout()),this,SLOT(on_pushButton_refresh_clicked()));
+    timer->start(1000);
 }
 
 Statistics_UI::~Statistics_UI()
 {
+    delete timer;
     delete ui;
 }
 

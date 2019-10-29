@@ -62,7 +62,7 @@ border-color: rgb(252, 233, 79);</string>
         <bool>true</bool>
        </property>
        <attribute name="horizontalHeaderVisible">
-        <bool>true</bool>
+        <bool>false</bool>
        </attribute>
        <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
         <bool>true</bool>
@@ -233,10 +233,17 @@ border-color: rgb(78, 154, 6);</string>
     <addaction name="actiondisplay_statistics"/>
     <addaction name="actionreset"/>
    </widget>
+   <widget class="QMenu" name="menusendframe">
+    <property name="title">
+     <string>sendframe</string>
+    </property>
+    <addaction name="actionCreate"/>
+   </widget>
    <addaction name="menufile"/>
    <addaction name="menudevice"/>
    <addaction name="menupacket"/>
    <addaction name="menustatistics"/>
+   <addaction name="menusendframe"/>
   </widget>
   <widget class="QStatusBar" name="statusBar">
    <property name="font">
@@ -345,6 +352,16 @@ border-color: rgb(193, 125, 17);</string>
   <action name="actionreset">
    <property name="text">
     <string>reset</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionCreate">
+   <property name="text">
+    <string>Create</string>
    </property>
    <property name="font">
     <font>

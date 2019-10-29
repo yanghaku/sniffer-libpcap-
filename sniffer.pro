@@ -30,6 +30,7 @@ SOURCES += \
         devicedetail.cpp \
         main.cpp \
         mainwindow.cpp \
+        sendframe.cpp \
         statistics.cpp \
         statistics_ui.cpp
 
@@ -39,6 +40,7 @@ HEADERS += \
         devicedetail.h \
         lbpcap.h \
         mainwindow.h \
+        sendframe.h \
         statistics.h \
         statistics_ui.h
 
@@ -46,6 +48,7 @@ FORMS += \
         device.ui \
         devicedetail.ui \
         mainwindow.ui \
+        sendframe.ui \
         statistics_ui.ui
 
 # Default rules for deployment.
