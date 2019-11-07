@@ -62,7 +62,7 @@ border-color: rgb(252, 233, 79);</string>
         <bool>true</bool>
        </property>
        <attribute name="horizontalHeaderVisible">
-        <bool>false</bool>
+        <bool>true</bool>
        </attribute>
        <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
         <bool>true</bool>
