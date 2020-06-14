@@ -12,6 +12,7 @@
 #include "capturethread.h"
 #include "statistics_ui.h"
 #include "sendframe.h"
+#include "applicationlayer.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -184,9 +185,8 @@ void MainWindow::refresh_table(){
             }
             else if(protocol==6){//tcp
                 ++packet_statistics.tcp_num;
-                ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("TCP"));
-                u_int16_t dst_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len)));
-                u_int16_t src_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len+2)));
+                u_int16_t src_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len)));
+                u_int16_t dst_port=ntohs(*((const u_int16_t*)(packet_list[table_size]+14+head_len+2)));
                 QString str=QString("%1 -> %2  [ ").arg(src_port).arg(dst_port);
                 u_int8_t flag=*((const u_int8_t*)(packet_list[table_size]+14+head_len+13));
                 if((flag>>5)&1)str=str+"URG ";
@@ -195,7 +195,28 @@ void MainWindow::refresh_table(){
                 if((flag>>2)&1)str=str+"RST ";
                 if((flag>>1)&1)str=str+"SYN ";
                 if(flag&1)str=str+"FIN ";
-                ui->tableWidget->setItem(table_size,6,new QTableWidgetItem(str+"]"));
+                str += "]";
+
+                int offset_len=((const tcp_header*)(packet_list[table_size]+14+head_len))->tcp_header_len*4;
+                int payload_len = pkthdr_list[table_size].len-14-head_len-offset_len;
+                if(checkHTTPproto(packet_list[table_size]+14+head_len+offset_len,payload_len)){
+                    ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("HTTP"));
+                    const char *payload = (const char*)packet_list[table_size]+14+head_len+offset_len;
+                    str += "  ";
+                    for(int i=0;i<payload_len && payload[i]!='\r' && payload[i]!='\n';++i)str+=payload[i];
+                }
+                else if(checkFTPproto(packet_list[table_size]+14+head_len+offset_len,payload_len)){
+                    ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("FTP"));
+                    const char *payload = (const char*)packet_list[table_size]+14+head_len+offset_len;
+                    if(payload[0]>='0'&&payload[0]<='9'){
+                        str = (str +"  Response: ");
+                    }else{
+                        str = (str +"  Request: ");
+                    }
+                    for(int i=0;i<payload_len && payload[i]!='\r' && payload[i]!='\n';++i)str+=payload[i];
+                }
+                else ui->tableWidget->setItem(table_size,4,new QTableWidgetItem("TCP"));
+                ui->tableWidget->setItem(table_size,6,new QTableWidgetItem(str));
             }
             else if(protocol==17){//udp
                 ++packet_statistics.udp_num;
@@ -274,28 +295,34 @@ void MainWindow::show_detail_packet(){
     // TextEdit
     QString str;
     char buf[13];
-    for(unsigned i=0;i<pkthdr_list[row].len;++i){
-        if(i%16==0){
-            sprintf(buf,"%04X:    ",i/16);
-            str=str+buf;
-        }
-        sprintf(buf,"%02X ",packet_list[row][i]);
+    int max_line = pkthdr_list[row].len>>4;
+    if(pkthdr_list[row].len%16)++max_line;
+    for(int line=0; line<max_line; ++line){
+        sprintf(buf,"%04X:    ",line);
         str=str+buf;
-        if(i%16==7)str=str+"  ";
-        if(i%16==15 || i==pkthdr_list[row].len-1){
-            if(i%16<7){
-                for(unsigned k=0;k<(7-i%16)*3;++k)str=str+" ";
-                str=str+"  ";
+
+        for(int i=0;i<16;++i){
+            int index = (line<<4)+i;
+            if(i==7)str=str+"  ";
+            if(index < pkthdr_list[row].len){
+                sprintf(buf,"%02X ",packet_list[row][index]);
+                str=str+buf;
             }
-            if(i%16<15)for(unsigned k=0;k<std::min(8u,(15-i%16))*3;++k)str=str+" ";
-            str=str+"    ";
-            for(unsigned j=i-i%16;j<=i;++j){
-                if(isprint(packet_list[row][j]))str=str+QString(packet_list[row][j]);
+            else str=str+"   ";
+        }
+        str=str+"  ";
+        for(int i=0;i<16;++i){
+            int index = (line<<4)+i;
+            if(i==7)str=str+" ";
+            if(index < pkthdr_list[row].len){
+                if(isprint(packet_list[row][index]))str=str+QString(packet_list[row][index]);
                 else str=str+".";
             }
-            str=str+"\n";
+            else break;
         }
+        str=str+"\n";
     }
+
     ui->textEdit->setText(str);
 }
 
@@ -495,8 +522,8 @@ void MainWindow::parsing_arp(const u_char *packet) const{
 
 void MainWindow::parsing_tcp(const u_char *packet, int len) const{
     const tcp_header* tcp=((const tcp_header*)packet);
-    u_int16_t dst_port=ntohs(tcp->tcp_source_port);
-    u_int16_t src_port=ntohs(tcp->tcp_dest_port);
+    u_int16_t src_port=ntohs(tcp->tcp_source_port);
+    u_int16_t dst_port=ntohs(tcp->tcp_dest_port);
     u_int32_t seq=ntohl(tcp->tcp_acknowedgement);
     u_int32_t ack=ntohl(tcp->tcp_ack);
     QString str;
@@ -561,6 +588,16 @@ void MainWindow::parsing_tcp(const u_char *packet, int len) const{
     //urgent point
     p=new QTreeWidgetItem(item);
     p->setText(0,QString("Urgent point: 0x%1").arg(ntohs(tcp->tcp_urgent_point),4,16,QLatin1Char('0')));
+    // tcp payload
+    p=new QTreeWidgetItem(item);
+    int offset_len = tcp->tcp_header_len*4;
+    p->setText(0,QString("TCP Payload ( %1 bytes)").arg(len-offset_len));
+    if(checkHTTPproto(packet+offset_len, len-offset_len)){
+        parsing_http(packet+offset_len, len-offset_len);
+    }
+    else if(checkFTPproto(packet+offset_len, len-offset_len)){
+        parsing_ftp(packet+offset_len, len-offset_len);
+    }
 }
 
 void MainWindow::parsing_udp(const u_char *packet, int len) const{
@@ -597,6 +634,83 @@ void MainWindow::parsing_icmp(const u_char *packet, int len) const{
     p->setText(0,QString("Sequence number: %1 (0x%2)").arg(ntohs(icmp->icmp_seq)).arg(ntohs(icmp->icmp_seq),4,16,QLatin1Char('0')));
 }
 
+void MainWindow::parsing_ftp(const u_char *packet, int len) const{
+    QTreeWidgetItem* item=new QTreeWidgetItem(ui->treeWidget);
+    item->setText(0,"File Transfer Protocol (FTP)");
+    QTreeWidgetItem* p=new QTreeWidgetItem(item);
+    QString str = "";
+    for(int i=0;i<len;++i){
+        if(packet[i]=='\r')str+="\\r";
+        else if(packet[i]=='\n')str+="\\n";
+        else if(packet[i]=='\0')break;
+        else str+=(const char)(packet[i]);
+    }
+    p->setText(0, str);
+    QTreeWidgetItem *son = new QTreeWidgetItem(p);
+    int now_len = 0;
+    if(packet[0]>='0' && packet[0]<='9'){ // response
+        str = "Response code: ";
+        while(now_len<3)str+=(const char)(packet[now_len++]);
+        son->setText(0,str);
+        son = new QTreeWidgetItem(p);
+        str = "Response arg: ";
+        while(now_len<len && packet[now_len]==' ')++now_len;
+        while(now_len<len && packet[now_len]!='\r' && packet[now_len]!='\n')str+=(const char)(packet[now_len++]);
+        son->setText(0,str);
+    }else{ // request
+        str = "Request command: ";
+        while(now_len<len && packet[now_len]!=' ' && packet[now_len]!='\r' && packet[now_len]!='\n')str+=(const char)packet[now_len++];
+        son->setText(0,str);
+        if(now_len<len && packet[now_len]!='\r' && packet[now_len]!='\n'){
+            son = new QTreeWidgetItem(p);
+            str = "Request arg: ";
+            while(now_len<len && packet[now_len]!='\r' && packet[now_len]!='\n')str+=(const char)packet[now_len++];
+            son->setText(0, str);
+        }
+    }
+}
+
+void MainWindow::parsing_http(const u_char *packet, int len) const{
+    QTreeWidgetItem* item=new QTreeWidgetItem(ui->treeWidget);
+    item->setText(0,"Hypertext Transfer Protocol (HTTP)");
+    // request line or response line
+    QTreeWidgetItem* line1 = new QTreeWidgetItem(item);
+    int now_index = 0;
+    QString lineStr = "";
+    while(now_index<len && packet[now_index]!='\r')lineStr+=(const char)packet[now_index++];
+    line1->setText(0,lineStr+"  \\r\\n");
+
+    // response
+    QStringList qsl=lineStr.split(" ");
+    if(qsl.length()<3)return;
+    if(packet[0]=='h' && packet[1]=='t' && packet[2]=='t' && packet[3]=='p'){
+        QTreeWidgetItem *son = new QTreeWidgetItem(line1);
+        son->setText(0,"Response version: "+qsl[0]);
+        son = new QTreeWidgetItem(line1);
+        son->setText(0,"Status code: "+qsl[1]);
+        son = new QTreeWidgetItem(line1);
+        son->setText(0,"Response phrase: "+qsl[2]);
+    }
+    else{ // request
+        QTreeWidgetItem *son = new QTreeWidgetItem(line1);
+        son->setText(0,"Request method: "+qsl[0]);
+        son = new QTreeWidgetItem(line1);
+        son->setText(0,"Request url: "+qsl[1]);
+        son = new QTreeWidgetItem(line1);
+        son->setText(0,"request version: "+qsl[2]);
+    }
+
+    now_index += 2;// "\r\n"
+    // header
+    while(now_index+1 < len){
+        if(packet[now_index]=='\r' && packet[now_index+1]=='\n')break;
+        QString str="";
+        while(now_index<len && packet[now_index]!='\r')str+=(const char)packet[now_index++];
+        now_index+=2;
+        QTreeWidgetItem *son = new QTreeWidgetItem(item);
+        son->setText(0,str+"  \\r\\n");
+    }
+}
 
 
 void MainWindow::on_actionclose_triggered(){

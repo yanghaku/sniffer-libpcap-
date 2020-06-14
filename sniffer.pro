@@ -25,6 +25,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
+        applicationlayer.cpp \
         capturethread.cpp \
         device.cpp \
         devicedetail.cpp \
@@ -35,6 +36,7 @@ SOURCES += \
         statistics_ui.cpp
 
 HEADERS += \
+        applicationlayer.h \
         capturethread.h \
         device.h \
         devicedetail.h \

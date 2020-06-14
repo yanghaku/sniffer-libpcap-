@@ -141,7 +141,7 @@ border-color: rgb(78, 154, 6);</string>
        </property>
        <property name="font">
         <font>
-         <family>Source Code Pro</family>
+         <family>Ubuntu Mono</family>
          <pointsize>13</pointsize>
          <weight>50</weight>
          <bold>false</bold>
@@ -194,7 +194,7 @@ border-color: rgb(78, 154, 6);</string>
      <x>0</x>
      <y>0</y>
      <width>1182</width>
-     <height>42</height>
+     <height>33</height>
     </rect>
    </property>
    <property name="font">

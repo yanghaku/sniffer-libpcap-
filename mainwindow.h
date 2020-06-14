@@ -46,6 +46,9 @@ public:
 
     void parsing_icmp(const u_char*,int)const;
 
+    void parsing_ftp(const u_char *packet, int len) const;
+
+    void parsing_http(const u_char *packet, int len) const;
 
 private slots:
     void on_actionchange_triggered();
