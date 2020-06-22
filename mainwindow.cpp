@@ -13,6 +13,8 @@
 #include "statistics_ui.h"
 #include "sendframe.h"
 #include "applicationlayer.h"
+#include "arpspoofing.h"
+#include "arpflooding.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -968,4 +970,26 @@ void MainWindow::on_actionCreate_triggered()
     }
     send->setModal(false);
     send->show();
+}
+
+void MainWindow::on_actionARP_spoofing_triggered()
+{
+    ArpSpoofing *arpSpoofing = new ArpSpoofing(nowdev->name);
+    if(!arpSpoofing->device_ok){
+        QMessageBox::critical(this,"error","init error! ");
+        return;
+    }
+    arpSpoofing->setModal(false);
+    arpSpoofing->show();
+}
+
+void MainWindow::on_actionARP_flooding_triggered()
+{
+    ArpFlooding *arpFlooding = new ArpFlooding(nowdev->name);
+    if(!arpFlooding->device_ok){
+        QMessageBox::critical(this,"error","init error! ");
+        return;
+    }
+    arpFlooding->setModal(false);
+    arpFlooding->show();
 }

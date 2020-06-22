@@ -26,6 +26,8 @@ CONFIG += c++11
 
 SOURCES += \
         applicationlayer.cpp \
+        arpflooding.cpp \
+        arpspoofing.cpp \
         capturethread.cpp \
         device.cpp \
         devicedetail.cpp \
@@ -37,6 +39,8 @@ SOURCES += \
 
 HEADERS += \
         applicationlayer.h \
+        arpflooding.h \
+        arpspoofing.h \
         capturethread.h \
         device.h \
         devicedetail.h \
@@ -47,6 +51,8 @@ HEADERS += \
         statistics_ui.h
 
 FORMS += \
+        arpflooding.ui \
+        arpspoofing.ui \
         device.ui \
         devicedetail.ui \
         mainwindow.ui \

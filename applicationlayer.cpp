@@ -35,6 +35,7 @@ struct Trie{
         }
         now->has_value = true;
     }
+
     bool query(const char* s,int len){
         TrieNode *now = root;
         for(int i=0;i<len;++i){

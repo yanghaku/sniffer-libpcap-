@@ -33,8 +33,8 @@ SendFrame::SendFrame(const char* device_name,QWidget *parent) :
 //    ui->ip_sourceip->setValidator(new QRegExpValidator(reg_ip,this));
 //    ui->ip_destip->setValidator(new QRegExpValidator(reg_ip,this));
 
-    ui->number->setValidator(new QIntValidator(1,10000,this));
-    ui->time_interval->setValidator(new QIntValidator(500,10000,this));
+    ui->number->setValidator(new QIntValidator(1,10000000,this));
+    ui->time_interval->setValidator(new QIntValidator(0,1000000,this));
     ui->ip_foff->setValidator(new QIntValidator(0,(1<<13)-1,this));
     ui->ip_id->setValidator(new QIntValidator(0,0xffff,this));
     ui->ip_ttl->setValidator(new QIntValidator(0,0xff,this));
@@ -83,7 +83,7 @@ SendFrame::~SendFrame()
 
 bool SendFrame::createDevice(const char* device_name){
     if(!~(sockfd=socket(PF_PACKET,SOCK_RAW,htons(ETH_P_ALL))) ){
-        QMessageBox::critical(this,"Error","socket()1 failed ");
+        QMessageBox::critical(this,"Error","socket() failed ");
         return false;
     }
     struct ifreq ifr;
@@ -123,13 +123,13 @@ void SendFrame::on_pushButton_send_clicked()
     }
     bool ok;
     int num=ui->number->text().toInt(&ok,10);
-    if(!ok || num<1 || num>50000){
+    if(!ok || num<1 || num>50000000){
         QMessageBox::critical(this,"Error","the send packet number is invalued!");
         ui->pushButton_send->setEnabled(true);
         return;
     }
     int time_sleep=ui->time_interval->text().toInt(&ok,10);
-    if(!ok || time_sleep<500 || time_sleep>50000){
+    if(!ok || time_sleep<0 || time_sleep>50000){
         QMessageBox::critical(this,"Error","the time interval is invalued!");
         ui->pushButton_send->setEnabled(true);
         return;
@@ -388,7 +388,7 @@ int SendFrame::createPacket(uint8_t *packet){
         memcpy(packet+len,ui->Data->toPlainText().toLatin1(),data_len);
         ip->ip_length=htons(len+data_len-sizeof(ether_header));
         ip->ip_checksum=0;
-        ip->ip_checksum=htons(ip_checksum(ip));
+        ip->ip_checksum=ip_checksum(ip);//htons(ip_checksum(ip));
         return len+data_len;
     }
 }
@@ -464,8 +464,10 @@ uint16_t SendFrame::ip_checksum(const ip_header * ip){
     uint32_t ans=0;
     for(int i=0;i<10;++i){
         ans=ans+p[i];
-        ans=(ans>>16)+(ans&0xffff);
+
     }
+    ans=(ans>>16)+(ans&0xffff);
+    ans += (ans>>16);
     return ~uint16_t(ans);
 }
 uint16_t SendFrame::icmp_checksum(const icmp_header *icmp){

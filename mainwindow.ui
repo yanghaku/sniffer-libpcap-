@@ -239,11 +239,19 @@ border-color: rgb(78, 154, 6);</string>
     </property>
     <addaction name="actionCreate"/>
    </widget>
+   <widget class="QMenu" name="menuattack">
+    <property name="title">
+     <string>attack</string>
+    </property>
+    <addaction name="actionARP_spoofing"/>
+    <addaction name="actionARP_flooding"/>
+   </widget>
    <addaction name="menufile"/>
    <addaction name="menudevice"/>
    <addaction name="menupacket"/>
    <addaction name="menustatistics"/>
    <addaction name="menusendframe"/>
+   <addaction name="menuattack"/>
   </widget>
   <widget class="QStatusBar" name="statusBar">
    <property name="font">
@@ -362,6 +370,26 @@ border-color: rgb(193, 125, 17);</string>
   <action name="actionCreate">
    <property name="text">
     <string>Create</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionARP_spoofing">
+   <property name="text">
+    <string>ARP spoofing</string>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>13</pointsize>
+    </font>
+   </property>
+  </action>
+  <action name="actionARP_flooding">
+   <property name="text">
+    <string>ARP flooding</string>
    </property>
    <property name="font">
     <font>

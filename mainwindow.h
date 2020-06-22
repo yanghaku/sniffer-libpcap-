@@ -73,6 +73,10 @@ private slots:
 
     void on_actionCreate_triggered();
 
+    void on_actionARP_spoofing_triggered();
+
+    void on_actionARP_flooding_triggered();
+
 private:
     Ui::MainWindow *ui;
 
